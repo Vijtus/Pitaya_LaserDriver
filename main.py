@@ -9,6 +9,7 @@ from time import sleep
 import csv
 from simple_pid import PID 
 import time
+import struct
 
 #Setup the connection to the Red Pitaya
 IP = "rp-f0a29f.local"
@@ -43,7 +44,7 @@ def sample_oscilloscope():
     #Set the parameters for the acquisition
     rp_s.tx_txt('ACQ:RST')
     sleep(0.1)
-    rp_s.tx_txt('ACQ:DATA:FORMAT ASCII')
+    rp_s.tx_txt('ACQ:DATA:FORMAT BIN')
     rp_s.tx_txt('ACQ:DATA:UNITS VOLTS')
     #The Red Pitaya has a sample rate of 125 MS/s
     #we use the decimation factor to reduce the sample rate
@@ -51,8 +52,8 @@ def sample_oscilloscope():
     rp_s.tx_txt('ACQ:SOUR1:GAIN HV')
     rp_s.tx_txt('ACQ:TRIG:LEV 0.5')
     rp_s.tx_txt('ACQ:TRIG:DLY 8000')
-    rp_s.tx_txt('ACQ:TRIG CH1_PE')
     rp_s.tx_txt('ACQ:START')
+    rp_s.tx_txt('ACQ:TRIG CH1_PE')
     sleep(0.1)
 
     #Wait for the acquisition to finish
@@ -60,18 +61,18 @@ def sample_oscilloscope():
         rp_s.tx_txt('ACQ:TRIG:STAT?')
         if rp_s.rx_txt() == 'TD':
             break
-    sleep(0.5)
     #Read the data from the acquisition
     rp_s.tx_txt('ACQ:SOUR1:DATA?')
     print('Reading data...')
     #rp_s.tx_txt('ACQ:SOUR1:DATA:STA:N? 0,1000')
-    buff_string = rp_s.rx_txt()
+    buff_byte = rp_s.rx_arb()
     print('Done reading data!') 
 
     #Convert the data to a list of floats
-    buff_string = buff_string.strip('{}\n\r').replace("  ", "").split(',')
-    buff = list(map(float, buff_string))
+    # buff_string = buff_string.strip('{}\n\r').replace("  ", "").split(',')
+    # buff = list(map(float, buff_string))
 
+    buff = [struct.unpack('!f',bytearray(buff_byte[i:i+4]))[0] for i in range(0, len(buff_byte), 4)]
     return buff
 
 buff = sample_oscilloscope()
